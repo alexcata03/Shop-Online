@@ -42,9 +42,9 @@ try {
 
     // User routes
     $app->post('/login', [$userController, 'login']); // Route for user login
+    $app->post('/register', [$userController, 'createUser']); // Route for user register
     $app->post('/logout', [$userController, 'logout']); // Route for user logout
     $app->get('/users', [$userController, 'getAll']); // Route to get all users
-    $app->post('/users', [$userController, 'createUser']); // Route to create a new user
     $app->put('/users/{username}', [$userController, 'updateUser']); // Route to update an existing user
     $app->delete('/users/{username}', [$userController, 'deleteUser']); // Route to delete an existing user
 

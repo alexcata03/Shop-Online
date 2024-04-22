@@ -43,75 +43,92 @@ class UserController
     $username = $loginData['username'];
     $password = $loginData['password'];
 
+    // Check if both username and password are provided
     if (!$username || !$password) {
         return $this->view->render($response->withStatus(400), 'login_user_error.twig', [
             'error' => 'Username and password are required',
             'username' => $username,
             'password' => $password
-        ]);
+        ])->withHeader('Content-Type', 'text/html; charset=UTF-8');
     }
 
     // Perform database query to fetch user data based on username
     $stmt = $this->db->prepare('SELECT * FROM users WHERE username = ? LIMIT 1');
     $stmt->execute([$username]);
     $user = $stmt->fetch();
-    // Check if user exists and if password matches
-    if ($user && password_verify($password, $user['password'])) {
-        // User authenticated, generate session token
-        $sessionToken = uniqid();
 
-        // Store session token and other user data in session
-        $_SESSION['sessionToken'] = $sessionToken;
-        $_SESSION['userId'] = $user['id']; // Store the user ID in session
-
-        // Redirect to dashboard on successful login
-        return $this->view->render($response, 'login_user_success.twig', [
-            'username' => $username,
-            'password' => $password
-        ]);
-    } else {
-        // Authentication failed, render the login_query_error.twig template
-        // to display the error message along with the result of the database query
-        $errorMessage = 'Invalid username or password';
-        // Check if $user is null (no user found with the provided username)
-        // or if password verification failed
-        if (!$user) {
-            $errorMessage .= ' User not found';
-        } else {
-            $errorMessage .= ' Password mismatch';
-        }
+    // Check if user exists
+    if (!$user) {
         return $this->view->render($response->withStatus(401), 'login_query_error.twig', [
-            'error' => $errorMessage,
+            'error' => 'Invalid username',
             'username' => $username,
             'password' => $password
-        ]);
+        ])->withHeader('Content-Type', 'text/html; charset=UTF-8');
+    }
+
+    // Verify the password
+    $passwordHashFromDb = $user['password'];
+
+    if ($passwordHashFromDb !== null) {
+        if (password_verify($password, $passwordHashFromDb)) {
+            // Passwords match, proceed with login
+            $sessionToken = uniqid();
+
+            // Store session token and other user data in session
+            $_SESSION['sessionToken'] = $sessionToken;
+            $_SESSION['userId'] = $user['id']; // Store the user ID in session
+
+            // Redirect to dashboard on successful login
+            return $this->view->render($response, 'login_user_success.twig', [
+                'username' => $username
+            ])->withHeader('Content-Type', 'text/html; charset=UTF-8');
+        } else {
+            // Passwords don't match, render error message
+            return $this->view->render($response->withStatus(401), 'login_query_error.twig', [
+                'error' => 'Invalid password',
+                'username' => $username,
+                'password' => $password
+            ])->withHeader('Content-Type', 'text/html; charset=UTF-8');
+        }
+    } else {
+        // Handle case where password hash is null
+        return $this->view->render($response->withStatus(401), 'login_query_error.twig', [
+            'error' => 'Invalid password or null value',
+            'username' => $username,
+            'password' => $password
+        ])->withHeader('Content-Type', 'text/html; charset=UTF-8');
     }
 }
 
-
     // Method for user registration
-    public function register(Request $request, Response $response, $args)
+    public function createUser(Request $request, Response $response, $args)
     {
         $registerData = $request->getParsedBody();
 
         // Extract registration data
         $username = $registerData['username'];
         $email = $registerData['email'];
-        $password = password_hash($registerData['password'], PASSWORD_DEFAULT); // Hash the password
+        // Hash the password
+        $password = password_hash($registerData['password'], PASSWORD_BCRYPT);
         $phone = $registerData['phone'];
         $address = $registerData['address'];
-        $userStatus = $registerData['userStatus'];
         $firstName = $registerData['firstName'];
         $lastName = $registerData['lastName'];
 
         // Prepare and execute the SQL query to insert the new user
-        $stmt = $this->db->prepare('INSERT INTO users (username, email, password, phone, address, userStatus, firstName, lastName) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-        $stmt->execute([$username, $email, $password, $phone, $address, $userStatus, $firstName, $lastName]);
+        $stmt = $this->db->prepare('INSERT INTO users (username, email, password, phone, address, userStatus, firstName, lastName) VALUES (?, ?, ?, ?, ?, 1, ?, ?)');
+        $stmt->execute([$username, $email, $password, $phone, $address, $firstName, $lastName]);
 
         // Render the success template after successful registration
         return $this->view->render($response, 'register_user_success.twig', [
             'username' => $username,
-            'email' => $email
+            'email' => $email,
+            'phone' => $phone,
+            'address' => $address,
+            'userStatus' => 1, // Set userStatus to 1 by default
+            'password' =>$password,
+            'firstName' => $firstName,
+            'lastName' => $lastName
         ]);
     }
 
@@ -135,27 +152,6 @@ class UserController
         return $this->view->render($response, 'users.twig', ['users' => $users]);
     }
 
-    // Method to create a new user
-    public function createUser(Request $request, Response $response, $args)
-    {
-        $userData = $request->getParsedBody();
-
-        $stmt = $this->db->prepare('INSERT INTO users (username, email, password, phone, address, userStatus, firstName, lastName) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-
-        $stmt->execute([
-            $userData['username'],
-            $userData['email'],
-            $userData['password'],
-            $userData['phone'],
-            $userData['address'],
-            $userData['userStatus'],
-            $userData['firstName'],
-            $userData['lastName']
-        ]);
-
-        return $this->view->render($response, 'create_user_success.twig');
-    }
-
     // Method to update an existing user
     public function updateUser(Request $request, Response $response, $args)
     {
@@ -166,7 +162,7 @@ class UserController
 
         $stmt->execute([
             $userData['email'],
-            $userData['password'],
+            password_hash($userData['password'], PASSWORD_BCRYPT), // Hash the password
             $userData['phone'],
             $userData['address'],
             $userData['userStatus'],
