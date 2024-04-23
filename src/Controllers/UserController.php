@@ -20,6 +20,7 @@ class UserController
         $this->view = $view;
         $this->sessionDuration = 1209600; //14 zile
         $this->checkSessionExpiration();
+        session_start();
     }
     
     //Verifica token
@@ -81,12 +82,8 @@ class UserController
     }
 
     // Passwords match, proceed with login
-    $sessionToken = uniqid();
-
     // Store session token and other user data in session
-    $_SESSION['sessionToken'] = $sessionToken;
     $_SESSION['userId'] = $user['id']; // Store the user ID in session
-    print_r($_SESSION);
     // Redirect to dashboard on successful login
     return $this->view->render($response, 'login_user_success.twig', [
         'userId' => $user['id'], // Pass the user ID to the template
@@ -140,12 +137,7 @@ class UserController
 
     // Get the user ID of the newly created user
     $userId = $this->db->lastInsertId();
-
-    // Generate a session token
-    $sessionToken = uniqid();
-
     // Store session token and user ID in session
-    $_SESSION['sessionToken'] = $sessionToken;
     $_SESSION['userId'] = $userId;
 
     // Redirect to dashboard or any other appropriate page
@@ -179,18 +171,45 @@ class UserController
 
     // Method to get all users
     public function getAll(Request $request, Response $response, $args)
-    {
-        $stmt = $this->db->query('SELECT * FROM users');
-        $users = $stmt->fetchAll();
+{
+    // Get the user ID from the session
+    $userId = $_SESSION['userId'];
 
-        return $this->view->render($response, 'users.twig', ['users' => $users]);
+    // Get the user status from the database
+    $stmt = $this->db->prepare('SELECT userStatus FROM users WHERE id =?');
+    $stmt->execute([$userId]);
+    $userStatus = $stmt->fetchColumn();
+
+    // Check if the user has permission to view all users
+    if ($userStatus!= 2) {
+        return $this->view->render($response, 'no_perms.twig', ['message' => 'You do not have permission to view all users']);
     }
+
+    $stmt = $this->db->query('SELECT * FROM users');
+    $users = $stmt->fetchAll();
+
+    return $this->view->render($response, 'users.twig', ['users' => $users]);
+}
+
 
     // Method to update an existing user
     public function updateUser(Request $request, Response $response, $args)
     {
-        $username = $args['username'];
-        $userData = $request->getParsedBody();
+        // Get the user ID from the session
+    $userId = $_SESSION['userId'];
+
+    // Get the user status from the database
+    $stmt = $this->db->prepare('SELECT userStatus FROM users WHERE id =?');
+    $stmt->execute([$userId]);
+    $userStatus = $stmt->fetchColumn();
+
+    // Check if the user has permission to update other users
+    if ($userStatus!= 2) {
+        return $this->view->render($response, 'no_perms.twig', ['message' => 'You do not have permission to update other users']);
+    }
+
+    $username = $args['username'];
+    $userData = $request->getParsedBody();
 
         $stmt = $this->db->prepare('UPDATE users SET email = ?, password = ?, phone = ?, address = ?, userStatus = ?, firstName = ?, lastName = ? WHERE username = ?');
 
@@ -211,7 +230,20 @@ class UserController
     // Method to delete an existing user
     public function deleteUser(Request $request, Response $response, $args)
     {
-        $username = $args['username'];
+        // Get the user ID from the session
+    $userId = $_SESSION['userId'];
+
+    // Get the user status from the database
+    $stmt = $this->db->prepare('SELECT userStatus FROM users WHERE id =?');
+    $stmt->execute([$userId]);
+    $userStatus = $stmt->fetchColumn();
+
+    // Check if the user has permission to delete other users
+    if ($userStatus!= 2) {
+        return $this->view->render($response, 'no_perms.twig', ['message' => 'You do not have permission to delete other users']);
+    }
+
+    $username = $args['username'];
 
         $stmt = $this->db->prepare('DELETE FROM users WHERE username = ?');
         $stmt->execute([$username]);
