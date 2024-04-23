@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Shopping Carts</title>
+</head>
+<body>
+    <h1>All Shopping Carts</h1>
+    {% if shopping_carts %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Creation Date</th>
+                    <th>Expiration Date</th>
+                    <th>Total Price</th>
+                    <th>Items</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cart in shopping_carts %}
+                    <tr>
+                        <td>{{ cart.username }}</td>
+                        <td>{{ cart.creation_date }}</td>
+                        <td>{{ cart.expiration_date }}</td>
+                        <td>${{ cart.total_price }}</td>
+                        <td>
+                            <ul>
+                                {% for item in cart.cart_items %}
+                                    <li>{{ item.product_name }} (Price: ${{ item.price }}, Quantity: {{ item.quantity }})</li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No shopping carts found.</p>
+    {% endif %}
+</body>
+</html>
