@@ -32,15 +32,7 @@ try {
     $twig = Twig::create('../templates', ['cache' => false]);
     $app->add(new SessionMiddleware());
     $app->get('/', [HomeController::class, 'index']);
-
-    $productController = new ProductController($db, $twig);
-    $userController = new UserController($db, $twig); // Instantiate UserController
-
-    $app->get('/products', [$productController, 'getAll']);
-    $app->get('/filtered-products', [$productController, 'getByCategory']);
-    $app->post('/products', [$productController, 'create']);
-    $app->put('/products/{productId}', [$productController, 'update']);
-    $app->delete('/products/{productId}', [$productController, 'delete']);
+    $userController = new UserController($db, $twig); // Instantiate UserControlle
 
     // User routes
     $app->post('/login', [$userController, 'login']); // Route for user login
@@ -50,8 +42,13 @@ try {
     $app->put('/users/{username}', [$userController, 'updateUser']); // Route to update an existing user
     $app->delete('/users/{username}', [$userController, 'deleteUser']); // Route to delete an existing user
 
-    $sessionData = $_SESSION;
-    print_r($sessionData);
+    $productController = new ProductController($db, $twig, $_SESSION);
+
+    $app->get('/products', [$productController, 'getAll']);
+    $app->get('/filtered-products', [$productController, 'getByCategory']);
+    $app->post('/products', [$productController, 'create']);
+    $app->put('/products/{productId}', [$productController, 'update']);
+    $app->delete('/products/{productId}', [$productController, 'delete']);
 
     $app->add(TwigMiddleware::create($app, $twig));
 
