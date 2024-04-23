@@ -18,7 +18,6 @@ class UserController
     {
         $this->db = $db;
         $this->view = $view;
-        session_start();
         $this->sessionDuration = 1209600; //14 zile
         $this->checkSessionExpiration();
     }
@@ -87,7 +86,7 @@ class UserController
     // Store session token and other user data in session
     $_SESSION['sessionToken'] = $sessionToken;
     $_SESSION['userId'] = $user['id']; // Store the user ID in session
-
+    print_r($_SESSION);
     // Redirect to dashboard on successful login
     return $this->view->render($response, 'login_user_success.twig', [
         'userId' => $user['id'], // Pass the user ID to the template
@@ -97,44 +96,71 @@ class UserController
 
     // Method for user registration
     public function createUser(Request $request, Response $response, $args)
-    {
-        $registerData = $request->getParsedBody();
-    
-        // Extract registration data
-        $username = $registerData['username'];
-        $email = $registerData['email'];
-        $password = $registerData['password'];
-        $phone = $registerData['phone'];
-        $address = $registerData['address'];
-        $firstName = $registerData['firstName'];
-        $lastName = $registerData['lastName'];
-    
-        // Prepare and execute the SQL query to insert the new user
-        $stmt = $this->db->prepare('INSERT INTO users (username, email, password, phone, address, userStatus, firstName, lastName) VALUES (?, ?, ?, ?, ?, 1, ?, ?)');
-        $stmt->execute([$username, $email, $password, $phone, $address, $firstName, $lastName]);
-    
-        // Get the user ID of the newly created user
-        $userId = $this->db->lastInsertId();
-    
-        // Generate a session token
-        $sessionToken = uniqid();
-    
-        // Store session token and user ID in session
-        $_SESSION['sessionToken'] = $sessionToken;
-        $_SESSION['userId'] = $userId;
-    
-        // Redirect to dashboard or any other appropriate page
-        return $this->view->render($response, 'register_user_success.twig', [
-            'username' => $username,
-            'email' => $email,
-            'phone' => $phone,
-            'address' => $address,
-            'userStatus' => 1, // Set userStatus to 1 by default
-            'firstName' => $firstName,
-            'lastName' => $lastName,
-            'userId' => $userId // Pass the user ID to the template
+{
+    $registerData = $request->getParsedBody();
+
+    // Extract registration data
+    $username = $registerData['username'];
+    $email = $registerData['email'];
+    $password = $registerData['password'];
+    $phone = $registerData['phone'];
+    $address = $registerData['address'];
+    $firstName = $registerData['firstName'];
+    $lastName = $registerData['lastName'];
+
+    // Check if username already exists
+    $stmt = $this->db->prepare('SELECT COUNT(*) AS count FROM users WHERE username = ?');
+    $stmt->execute([$username]);
+    $resultUsername = $stmt->fetch();
+
+    // Check if email already exists
+    $stmt = $this->db->prepare('SELECT COUNT(*) AS count FROM users WHERE email = ?');
+    $stmt->execute([$email]);
+    $resultEmail = $stmt->fetch();
+
+    if ($resultUsername['count'] > 0) {
+        // Username already exists, return an error
+        return $this->view->render($response, 'register_user_error.twig', [
+            'error' => 'Username already exists in the database'
         ]);
     }
+
+    if ($resultEmail['count'] > 0) {
+        // Email already exists, return an error
+        return $this->view->render($response, 'register_user_error.twig', [
+            'error' => 'Email already exists in the database'
+        ]);
+    }
+
+    // If no errors, proceed with creating the user
+
+    // Prepare and execute the SQL query to insert the new user
+    $stmt = $this->db->prepare('INSERT INTO users (username, email, password, phone, address, userStatus, firstName, lastName) VALUES (?, ?, ?, ?, ?, 1, ?, ?)');
+    $stmt->execute([$username, $email, $password, $phone, $address, $firstName, $lastName]);
+
+    // Get the user ID of the newly created user
+    $userId = $this->db->lastInsertId();
+
+    // Generate a session token
+    $sessionToken = uniqid();
+
+    // Store session token and user ID in session
+    $_SESSION['sessionToken'] = $sessionToken;
+    $_SESSION['userId'] = $userId;
+
+    // Redirect to dashboard or any other appropriate page
+    return $this->view->render($response, 'register_user_success.twig', [
+        'username' => $username,
+        'email' => $email,
+        'phone' => $phone,
+        'address' => $address,
+        'userStatus' => 1, // Set userStatus to 1 by default
+        'firstName' => $firstName,
+        'lastName' => $lastName,
+        'userId' => $userId // Pass the user ID to the template
+    ]);
+}
+
 
 
     // Logout
