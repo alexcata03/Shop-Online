@@ -165,14 +165,17 @@ class UserController
 
     // Logout
     public function logout(Request $request, Response $response, $args)
-    {
+{
+    // Check if session is active before attempting to destroy it
+    if (session_status() === PHP_SESSION_ACTIVE) {
         // Invalidate session token and clear session data
         session_unset();
         session_destroy();
-
-        // Redirect to login page after logout
-        return $this->view->render($response, 'login_user.twig', ['message' => 'Logged out successfully']);
     }
+
+    // Redirect to login page after logout
+    return $this->view->render($response, 'logout.twig', ['message' => 'Logged out successfully']);
+}
 
     // Method to get all users
     public function getAll(Request $request, Response $response, $args)
