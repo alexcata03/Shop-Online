@@ -65,6 +65,7 @@ try {
     $app->put('/orders/{orderId}', [$orderController, 'updateOrder']);
     $app->delete('/orders/{orderId}', [$orderController, 'deleteOrder']);
 
+    //Controller routes
     $cartController = new CartController($db, $twig, $_SESSION);
     $app->post('/users/{username}/shopping_cart', [$cartController, 'createCartbyUser']);
     $app->post('/users/{username}/shopping_cart/{productId}', [$cartController, 'addItemToShoppingCart']);
